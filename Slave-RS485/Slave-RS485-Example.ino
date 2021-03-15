@@ -12,6 +12,7 @@ const int myAddress = 1;
 int state = 0;  // State Machine Status
 
 // COMS FEEDBACK
+const int commandStopControl = 0;
 const int commandSetSpeedPos = 1;
 const int commandSetSpeed = 2;
 const int commandSetPos = 3;
@@ -59,7 +60,12 @@ void loop()
       msg[0] = 0;
       msg[1] = myAddress;  // Slave Address
 
-      if ((buf [1] == 'S') and buf[6] == 'P'){
+      if ((buf [1] == '-') and buf[6] == '-'){
+        msg[2] = commandStopControl; // Confirm command reception
+        state = stateMachineUpdate(state, commandStopControl); // Updates machine state
+      }
+
+      else if ((buf [1] == 'S') and buf[6] == 'P'){
         msg[2] = commandSetSpeedPos; // Confirm command reception
         state = stateMachineUpdate(state, commandSetSpeedPos); // Updates machine state
         refSpeed = getRefSpeedFromMessage(buf);
@@ -83,9 +89,9 @@ void loop()
         msg[2] = commandSetPID; // Confirm command reception
         float *constants;
         constants = getNewPIDParams(buf);
-        for(int i = 0; i < 3; i ++){
-          Serial.println(*(constants + i)); 
-        }
+        kp = *(constants);
+        ki = *(constants + 1);
+        kd = *(constants + 2);
       }
   
       else if (buf[1] == 'G'){
@@ -119,6 +125,7 @@ void loop()
         for(int j = 3; j < 7; j++){
           msg[j] = actSpeedBytes[6-j];
           msg[j+4] = actPosBytes[6-j];
+          // ADD MORE DATA HERE IF NEEDED - JUST LIKE PID PARAMETERS
         }
       }
   
@@ -126,20 +133,18 @@ void loop()
       sendMsgToMaster(msg, sizeof msg);
       // ZEROING BUF - NO MISINTERPRETATIONS
       for(int i = 0; i < sizeof(buf); i++) buf[i] = 0;
-
-      Serial.println("STATE:");
-      Serial.println(state);
     }
    }  // END OF if(received)
 
     // STATE MACHINE OUTPUT ACTION
     if(state == 0){
       // STOPPED
+      Serial.println("STOPPED:");
       Serial.println("STATE:");
       Serial.println(state);
     }
     else if(state == 1){
-      // SPEED AND POS MODE
+      // SPEED AND POS MODE - RUN PID CONTROLLER
       Serial.println("REF SPEED:");
       Serial.println(refSpeed);
       Serial.println("REF POS:");
@@ -147,13 +152,13 @@ void loop()
       
     }
     else if(state == 2){
-      // POS MODE
+      // POS MODE - RUN PD CONTROLLER
       Serial.println("REF POS:");
       Serial.println(refPos);
       
     }
     else if(state == 3){
-      // POS MODE
+      // SPEED MODE - RUN PI CONTROLLER
       Serial.println("REF SPEED:");
       Serial.println(refSpeed);
     }
