@@ -22,16 +22,18 @@ def init():
     rs485 = rs485.SerialWrapper(port)
     
     
-def stop():
+def close():
     port.close()
     
 # COMMANDS FEEDBACK:
+#   0 - StopControl
 #   1 - SetSpeedPos
 #   2 - SetSpeed
 #   3 - SetPos
 #   4 - SetPIDParameters
 #   5 - GetPIDParameters
 #   6 - GetSpeedPos
+commandStopControl = 0
 commandSetSpeedPos = 1
 commandSetSpeed = 2
 commandSetPos = 3
@@ -84,6 +86,21 @@ def setPos(address, pos):
         print("No Response from Slave")
     else:
         if((response[1] == address) and (response[2] == commandSetPos)):
+            print("Command correctly sent to Slave")
+        else:
+            print("Command sent but not confirmed from Slave")
+            
+
+def stopControl(address):
+    message = constructControlMessage(address, '-', '-')
+    global rs485
+    rs485.sendMsg(message)
+    time.sleep(0.1)
+    response = listenBack()
+    if(response == False):
+        print("No Response from Slave")
+    else:
+        if((response[1] == address) and (response[2] == commandStopControl)):
             print("Command correctly sent to Slave")
         else:
             print("Command sent but not confirmed from Slave")
@@ -176,15 +193,20 @@ def constructControlMessage(address, refSpeed, refPos):
     # P - Position
     # S - Speed
     # '-' - No CommanD
-    if (type(refSpeed) == str): # Set Pos
+    if ((type(refSpeed) == str) and (type(refPos) != str)): # Set Pos
         speed = 0.0
         pos = 1.0 * float(refPos)
         commandSpeed = '-'
         commandPos = 'P'
-    elif (type(refPos) == str): # Set Speed
+    elif ((type(refPos) == str) and type(refSpeed) != str): # Set Speed
         speed = 1.0 * float(refSpeed)
         pos = 0.0
         commandSpeed = 'S'
+        commandPos = '-'
+    elif ((type(refPos) == str) and type(refSpeed) == str): # Set Speed
+        speed = 0.0
+        pos = 0.0
+        commandSpeed = '-'
         commandPos = '-'
     else: # Set Pos and Speed
         speed = 1.0 * float(refSpeed)
