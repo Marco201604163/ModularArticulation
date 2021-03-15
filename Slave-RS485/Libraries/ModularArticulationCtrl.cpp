@@ -6,6 +6,7 @@ Created on Tue Mar  9 15:53:10 2021
 
 #include "ModularArticulationCtrl.h"
 
+const int commandStopCtrl = 0;
 const int commandSpeedPos = 1;
 const int commandSpeed = 2;
 const int commandPos = 3;
@@ -20,6 +21,7 @@ int stateMachineUpdate(const int actualState, const int commandReceived){
     // STATE 0
     case 0 :{
       switch(commandReceived){
+        case commandStopCtrl: nextState = actualState; break;
         case commandSpeedPos: nextState = 1; break;
         case commandSpeed: nextState = 3; break;
         case commandPos: nextState = 2; break;
@@ -28,6 +30,7 @@ int stateMachineUpdate(const int actualState, const int commandReceived){
     // STATE 1
     case 1 :{
       switch(commandReceived){
+        case commandStopCtrl: nextState = 0; break;
         case commandSpeedPos: nextState = actualState; break;
         case commandSpeed: nextState = 3; break;
         case commandPos: nextState = 2; break;
@@ -36,6 +39,7 @@ int stateMachineUpdate(const int actualState, const int commandReceived){
     // STATE 2
     case 2 :{
       switch(commandReceived){
+        case commandStopCtrl: nextState = 0; break;
         case commandSpeedPos: nextState = 1; break;
         case commandSpeed: nextState = 3; break;
         case commandPos: nextState = actualState; break;
@@ -44,6 +48,7 @@ int stateMachineUpdate(const int actualState, const int commandReceived){
     // STATE 3
     case 3 :{
       switch(commandReceived){
+        case commandStopCtrl: nextState = 0; break;
         case commandSpeedPos: nextState = 1; break;
         case commandSpeed: nextState = actualState; break;
         case commandPos: nextState = 2; break;
