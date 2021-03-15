@@ -24,10 +24,12 @@ act.setSpeedPos(address, refSpeed, refPos)
 # act.setSpeed(address, 43.25)
 # act.setPos(address, 67.89)
 
-act.getSpeedPos(address)
+# act.getSpeedPos(address)
 
-act.setPIDparameters(1, 17.0, 22.3, 43.1)
+# act.setPIDparameters(address, 17.0, 22.3, 43.1)
 # act.getPIDparameters(address)
 
+# act.stopControl(address)
+
 # Stop Coms
-act.stop()
+act.close()
