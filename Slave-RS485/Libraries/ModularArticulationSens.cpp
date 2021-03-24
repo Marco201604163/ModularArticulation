@@ -60,7 +60,6 @@ float updateJointPos(){
 	// GET POSITION FROM MAGNETIC ENCODER
     delayMicroseconds(100);
 	double magnetic_encoder_raw = magnetic_encoder.getPosition();
-    delayMicroseconds(100);
 	magnetic_encoder_raw = mapf(magnetic_encoder_raw, 0, 4096, 14, 4059);
 	
 	// DUE TO CALIBRATION:
@@ -72,15 +71,14 @@ float updateJointPos(){
 
 float updateJointSpeed(){
 	// CALCULATES JOINT SPEED AFTER POSITION UPDATE
-	if((micros() - previousMicros) > interval){
+	currentMicros = micros();
+	uint32_t elapsed = currentMicros - previousMicros;
+	
+	if(elapsed >= interval){
 		// SPEED CALC
-		currentMicros = micros();
-		uint32_t elapsed = currentMicros - previousMicros;
 		previousMicros = currentMicros;
-	  
 		// Degrees per Second
 		angSpeed = ((diffAngle(oldPos, actualPos) / elapsed) * 1000000UL);
-		
     }
 	return angSpeed;
 }
@@ -161,3 +159,8 @@ float rad(float deg){
 float deg(float rad){
 	return (rad * 360 / PI);
 }
+
+
+
+
+
