@@ -16,15 +16,17 @@ Created on Sat Mar  13 11:23:10 2021
 #include "ModularArticulationSens.h"
 
 // ANALOG INPUTS
-#define motorCurrentSensor A0
-#define supplyVoltageSensor A1	// ONLY POSITIVE VOLTAGES
-#define motorVoltageSensor A2	// POSITIVE AND NEGATIVE VOLTAGES
+#define supplyVoltageSensor A0	// ONLY POSITIVE VOLTAGES
+#define motorVoltageSensor A1	// POSITIVE AND NEGATIVE VOLTAGES
+#define motorCurrentSensorR A2	// MOTOR R SIDE CURRENT
+#define motorCurrentSensorL A3	// MOTOR L SIDE CURRENT
 
 // CONSTANTS
 #define PI 3.14159265358979
 
 // DIGITAL INPUTS
-#define motorTempSensor 7 // D7
+#define motorTempSensor 11 // D7
+#define homePosSensor 12 // D12 
 
 // TEMPERATURE - INITIALIZATION
 OneWire oneWire(motorTempSensor);	// One Wire Comunication
@@ -32,7 +34,6 @@ DallasTemperature tempSensor(&oneWire);
 
 // ENCODER - INITIALIZATION
 AS5600 magnetic_encoder;
-
 uint32_t interval = 75UL * 1000UL; // 75ms
 uint32_t currentMicros, previousMicros;
 double angSpeed = 0, actualPos = 0, oldPos = 0;
@@ -48,9 +49,13 @@ void startArticulationSens(){
 	
 	
 	// ANALOG INPUTS - VOLTAGE AND CURRENT
-	pinMode(motorCurrentSensor, INPUT);
 	pinMode(supplyVoltageSensor, INPUT);
 	pinMode(motorVoltageSensor, INPUT);
+	pinMode(motorCurrentSensorR, INPUT);
+	pinMode(motorCurrentSensorL, INPUT);
+	
+	// DIGITAL INPUTS - HOME POSITION
+	pinMode(homePosSensor, INPUT);
 	
 	// VARIABLES INIT - SPEED
 	previousMicros = micros();
@@ -119,16 +124,23 @@ float getMotorVoltage(){
 
 float getMotorCurrent(){
 	// POSITIVE CURRENTS ONLY
-	float average = 0.0, amps = 0.0;
+	float average = 0.0, amps = 0.0, ampsR = 0.0, ampsL = 0.0;
+	float Ris = 500; // Adjust to new value if Ris changed
 	int i = 0;
 	
     while(i < 10){
-		amps = analogRead(motorCurrentSensor);
+		ampsR = analogRead(motorCurrentSensorR);
+		ampsL = analogRead(motorCurrentSensorL);
+		// ADJUST SIGN ACCORDING TO INSTALLATION
+		amps = ampsR - ampsL;
 		delay(1);
 		average = (average * i + amps) / (i + 1);
 		i = i + 1;
     }
-	return (0.0046 * average + 0.0283); // Amps
+	
+	average = (average / 1024) * 5.0;
+	
+	return (average * 8500.0 / Ris); // Amps
 }
 
 float getMotorTemp(){
@@ -136,6 +148,12 @@ float getMotorTemp(){
 	tempSensor.requestTemperatures();
 	delay(1);
 	return (tempSensor.getTempCByIndex(0));
+}
+
+int homePositionStatus(){
+	// RETURNS 1 IF THE HOME POSITION IT'S REACHED
+	// Digital pin with 10k Ohm pull-up resistor
+	return(not(digitalRead(homePosSensor)));
 }
 
 float diffAngle(float oldAngle, float newAngle){
@@ -159,8 +177,3 @@ float rad(float deg){
 float deg(float rad){
 	return (rad * 360 / PI);
 }
-
-
-
-
-
