@@ -18,6 +18,7 @@ float getSupplyVoltage();	// (V)
 float getMotorVoltage();	// (V)
 float getMotorCurrent();	// (A)
 float getMotorTemp();		// (Celsius)
+int homePositionStatus();	// TRUE OR FALSE (1 OR 0)
 
 // AUXILIARY OPERATIONS
 float diffAngle(float oldAngle, float newAngle);
