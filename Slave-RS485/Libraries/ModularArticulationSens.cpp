@@ -25,7 +25,7 @@ Created on Sat Mar  13 11:23:10 2021
 #define PI 3.14159265358979
 
 // DIGITAL INPUTS
-#define motorTempSensor 11 // D7
+#define motorTempSensor 11 // D11
 #define homePosSensor 12 // D12 
 
 // TEMPERATURE - INITIALIZATION
@@ -105,7 +105,7 @@ float getSupplyVoltage(){
 		average = (average * i + v) / (i + 1);
 		i = i + 1;
     }
-	return (0.0143 * average + 0.0234); // V
+	return (0.0143 * average + 0.0034); // V
 }
 
 float getMotorVoltage(){
@@ -119,7 +119,7 @@ float getMotorVoltage(){
 		average = (average * i + v) / (i + 1);
 		i = i + 1;
     }
-	return (0.0334 * average - 19.352); // V
+	return (0.0334 * average - 19.442); // V
 }
 
 float getMotorCurrent(){
@@ -177,3 +177,4 @@ float rad(float deg){
 float deg(float rad){
 	return (rad * 360 / PI);
 }
+
