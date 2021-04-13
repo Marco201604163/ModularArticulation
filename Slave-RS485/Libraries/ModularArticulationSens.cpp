@@ -99,9 +99,9 @@ float getSupplyVoltage(){
 	float average = 0.0, v = 0.0;
 	int i = 0;
 	
-    while(i < 10){
+    while(i < 5){
 		v = analogRead(supplyVoltageSensor);
-		delay(1);
+		delayMicroseconds(100);
 		average = (average * i + v) / (i + 1);
 		i = i + 1;
     }
@@ -113,9 +113,9 @@ float getMotorVoltage(){
 	float average = 0.0, v = 0.0;
 	int i = 0;
 	
-    while(i < 10){
+    while(i < 5){
 		v = analogRead(motorVoltageSensor);
-		delay(1);
+		delayMicroseconds(100);
 		average = (average * i + v) / (i + 1);
 		i = i + 1;
     }
@@ -125,20 +125,21 @@ float getMotorVoltage(){
 float getMotorCurrent(){
 	// POSITIVE CURRENTS ONLY
 	float average = 0.0, amps = 0.0, ampsR = 0.0, ampsL = 0.0;
-	float Ris = 500; // Adjust to new value if Ris changed
+	float Ris = 900; // Adjust to new value if Ris changed
 	int i = 0;
 	
-    while(i < 10){
+    while(i < 5){
 		ampsR = analogRead(motorCurrentSensorR);
+		delayMicroseconds(100);
 		ampsL = analogRead(motorCurrentSensorL);
 		// ADJUST SIGN ACCORDING TO INSTALLATION
-		amps = ampsR - ampsL;
-		delay(1);
+		amps = ampsR + ampsL;
+		delayMicroseconds(100);
 		average = (average * i + amps) / (i + 1);
 		i = i + 1;
     }
 	
-	average = (average / 1024) * 5.0;
+	average = (average / 1023.0) * 5.0;
 	
 	return (average * 8500.0 / Ris); // Amps
 }
@@ -177,4 +178,8 @@ float rad(float deg){
 float deg(float rad){
 	return (rad * 360 / PI);
 }
+
+
+
+
 
