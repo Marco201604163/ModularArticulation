@@ -108,18 +108,9 @@ float getSupplyVoltage(){
 	return (0.0143 * average + 0.0034); // V
 }
 
-float getMotorVoltage(){
+float getMotorVoltage(int dutyPWM){
 	// POSITIVE ANG NEGATIVE VOLTAGES
-	float average = 0.0, v = 0.0;
-	int i = 0;
-	
-    while(i < 5){
-		v = analogRead(motorVoltageSensor);
-		delayMicroseconds(100);
-		average = (average * i + v) / (i + 1);
-		i = i + 1;
-    }
-	return (0.0334 * average - 19.442); // V
+	return (dutyPWM / 255.0) * getSupplyVoltage();
 }
 
 float getMotorCurrent(){
@@ -178,8 +169,3 @@ float rad(float deg){
 float deg(float rad){
 	return (rad * 360 / PI);
 }
-
-
-
-
-
