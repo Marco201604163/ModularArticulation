@@ -12,13 +12,13 @@ void startArticulationSens();
 
 // RETURNS SENSORS VALUES
 void updateJointSpeedPos(float *currentPos, float *currentSpeed);
-float updateJointPos();		// (Degrees)
-float updateJointSpeed();	// (Degrees/Second)
-float getSupplyVoltage();	// (V)
-float getMotorVoltage();	// (V)
-float getMotorCurrent();	// (A)
-float getMotorTemp();		// (Celsius)
-int homePositionStatus();	// TRUE OR FALSE (1 OR 0)
+float updateJointPos();					// (Degrees)
+float updateJointSpeed();				// (Degrees/Second)
+float getSupplyVoltage();				// (V)
+float getMotorVoltage(int dutyPWM);		// (V)
+float getMotorCurrent();				// (A)
+float getMotorTemp();					// (Celsius)
+int homePositionStatus();				// TRUE OR FALSE (1 OR 0)
 
 // AUXILIARY OPERATIONS
 float diffAngle(float oldAngle, float newAngle);
