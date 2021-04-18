@@ -34,7 +34,7 @@ DallasTemperature tempSensor(&oneWire);
 
 // ENCODER - INITIALIZATION
 AS5600 magnetic_encoder;
-uint32_t interval = 75UL * 1000UL; // 75ms
+uint32_t interval = 50UL * 1000UL; // 50ms
 uint32_t currentMicros, previousMicros;
 double angSpeed = 0, actualPos = 0, oldPos = 0;
 
@@ -59,6 +59,8 @@ void startArticulationSens(){
 	
 	// VARIABLES INIT - SPEED
 	previousMicros = micros();
+	actualPos = updateJointPos();
+	oldPos = updateJointPos();
 }
 
 float updateJointPos(){
@@ -68,7 +70,6 @@ float updateJointPos(){
 	magnetic_encoder_raw = mapf(magnetic_encoder_raw, 0, 4096, 14, 4059);
 	
 	// DUE TO CALIBRATION:
-	oldPos = actualPos;
 	actualPos = magnetic_encoder_raw * 0.089 - 1.2769;
 	
 	return actualPos;
@@ -80,12 +81,15 @@ float updateJointSpeed(){
 	uint32_t elapsed = currentMicros - previousMicros;
 	
 	if(elapsed >= interval){
-		// SPEED CALC
-		previousMicros = currentMicros;
-		// Degrees per Second
+		// DEGREES PER SECOND
 		angSpeed = ((diffAngle(oldPos, actualPos) / elapsed) * 1000000UL);
+		// VAR UPDATE
+		previousMicros = currentMicros;
+		oldPos = actualPos;
     }
-	return angSpeed;
+	
+	// MINUS TO CORRECT SENSOR ORIENTATION
+	return -angSpeed;
 }
 
 void updateJointSpeedPos(float *currentPos, float *currentSpeed){
