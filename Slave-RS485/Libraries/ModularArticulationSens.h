@@ -13,10 +13,10 @@ void startArticulationSens();
 // RETURNS SENSORS VALUES
 void updateJointSpeedPos(float *currentPos, float *currentSpeed);
 float updateJointPos();					// (Degrees)
-float updateJointSpeed();				// (Degrees/Second)
 float getSupplyVoltage();				// (V)
 float getMotorVoltage(int dutyPWM);		// (V)
 float getMotorCurrent();				// (A)
+float getMotorCurrentINA169();			// (A)
 float getMotorTemp();					// (Celsius)
 int homePositionStatus();				// TRUE OR FALSE (1 OR 0)
 
