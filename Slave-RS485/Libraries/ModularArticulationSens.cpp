@@ -17,7 +17,7 @@ Created on Sat Mar  13 11:23:10 2021
 
 // ANALOG INPUTS
 #define supplyVoltageSensor A0	// ONLY POSITIVE VOLTAGES
-#define motorVoltageSensor A1	// POSITIVE AND NEGATIVE VOLTAGES
+#define motorCurrentSensorINA169 A1	// POSITIVE AND NEGATIVE VOLTAGES
 #define motorCurrentSensorR A2	// MOTOR R SIDE CURRENT
 #define motorCurrentSensorL A3	// MOTOR L SIDE CURRENT
 
@@ -34,9 +34,11 @@ DallasTemperature tempSensor(&oneWire);
 
 // ENCODER - INITIALIZATION
 AS5600 magnetic_encoder;
-uint32_t interval = 50UL * 1000UL; // 50ms
-uint32_t currentMicros, previousMicros;
-double angSpeed = 0, actualPos = 0, oldPos = 0;
+uint32_t interval = 25UL * 1000UL; // 25 ms
+uint32_t currentMicros = 0, previousMicros = 0;
+double actualPos = 0, oldPos = 0;
+double angSpeed = 0, oldAngSpeed = 0;
+float speedArray[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
 
 
 void startArticulationSens(){
@@ -50,24 +52,28 @@ void startArticulationSens(){
 	
 	// ANALOG INPUTS - VOLTAGE AND CURRENT
 	pinMode(supplyVoltageSensor, INPUT);
-	pinMode(motorVoltageSensor, INPUT);
+	pinMode(motorCurrentSensorINA169, INPUT);
 	pinMode(motorCurrentSensorR, INPUT);
 	pinMode(motorCurrentSensorL, INPUT);
 	
+	
 	// DIGITAL INPUTS - HOME POSITION
 	pinMode(homePosSensor, INPUT);
-	
-	// VARIABLES INIT - SPEED
+
+	// SPEEDS UP I2C COMS
+	TWBR = 1; 
+
+	// VARIABLES INIT - SPEED / ENCODER
 	previousMicros = micros();
 	actualPos = updateJointPos();
-	oldPos = updateJointPos();
+	oldPos = actualPos;
 }
 
 float updateJointPos(){
 	// GET POSITION FROM MAGNETIC ENCODER
     delayMicroseconds(100);
 	double magnetic_encoder_raw = magnetic_encoder.getPosition();
-	magnetic_encoder_raw = mapf(magnetic_encoder_raw, 0, 4096, 14, 4059);
+	magnetic_encoder_raw = mapf(magnetic_encoder_raw, 0, 4096, 14.35, 4059.291);
 	
 	// DUE TO CALIBRATION:
 	actualPos = magnetic_encoder_raw * 0.089 - 1.2769;
@@ -75,27 +81,51 @@ float updateJointPos(){
 	return actualPos;
 }
 
-float updateJointSpeed(){
-	// CALCULATES JOINT SPEED AFTER POSITION UPDATE
+void updateJointSpeedPos(float *currentPos, float *currentSpeed){
 	currentMicros = micros();
 	uint32_t elapsed = currentMicros - previousMicros;
 	
 	if(elapsed >= interval){
 		// DEGREES PER SECOND
+		// MEDIR POSICAO 
+		
+		// GET POSITION FROM MAGNETIC ENCODER
+		double magnetic_encoder_raw = magnetic_encoder.getPosition();
+		magnetic_encoder_raw = mapf(magnetic_encoder_raw, 0.0, 4096.0, 14.35, 4059.291);
+		
+		// DUE TO CALIBRATION: (360 CORRECTS ORIENTATION)
+		actualPos = 360.0 - magnetic_encoder_raw * 0.089 - 1.2769;
+		
+		// VEL
 		angSpeed = ((diffAngle(oldPos, actualPos) / elapsed) * 1000000UL);
+		
+		// ERROR VERIFICATION
+		if(abs(angSpeed) > 500){
+		  angSpeed = oldAngSpeed;
+		  actualPos = oldPos + angSpeed * elapsed / 1000000UL;
+		}
+		
+		// RUNNING AVERAGE		
+		for(int i = 0; i < 4; i++){
+		  speedArray[i] = speedArray[i+1];
+		}
+		speedArray[4] = angSpeed;
+
+		angSpeed = 0.0;
+		for(int i = 0; i < 5; i++){
+		  angSpeed = angSpeed + speedArray[i];
+		}
+		angSpeed = angSpeed / 5;
+		
 		// VAR UPDATE
 		previousMicros = currentMicros;
 		oldPos = actualPos;
+		oldAngSpeed = angSpeed;
     }
 	
-	// MINUS TO CORRECT SENSOR ORIENTATION
-	return -angSpeed;
-}
-
-void updateJointSpeedPos(float *currentPos, float *currentSpeed){
 	// FUNCTION TO BE CALLED IN THE MAIN LOOP
-	*currentPos = updateJointPos();
-	*currentSpeed = updateJointSpeed();	
+	*currentPos = actualPos;
+	*currentSpeed = angSpeed;	
 }
 
 float getSupplyVoltage(){
@@ -139,6 +169,25 @@ float getMotorCurrent(){
 	return (average * 8500.0 / Ris); // Amps
 }
 
+float getMotorCurrentINA169(){
+	// POSITIVE CURRENTS ONLY
+	const float RS = 0.1, VOLTAGE_REF = 5.0;
+	float average = 0.0, amps = 0.0;
+	double currentValue = 0.0;
+	int i = 0;
+
+	// AVERAGE
+	while(i < 10){
+      amps = analogRead(motorCurrentSensorINA169);
+      delayMicroseconds(100);
+      average = (average * i + amps) / (i + 1);
+      i = i + 1;
+    }
+    currentValue = 0.0046 * average + 0.0283;
+	
+	return currentValue; // Amps
+}
+
 float getMotorTemp(){
 	// USES DALLAS (MANUFACTURER) LIBRARY
 	tempSensor.requestTemperatures();
@@ -167,9 +216,9 @@ double mapf(double val, double inMin, double inMax, double outMin, double outMax
 }
 
 float rad(float deg){
-	return (deg * PI / 360);
+	return (deg * PI / 180.0);
 }
 
 float deg(float rad){
-	return (rad * 360 / PI);
+	return (rad * 180.0 / PI);
 }
