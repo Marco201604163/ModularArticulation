@@ -24,7 +24,7 @@ A 12V DC Power Supply is used to power up the system. This way, only 4 wires are
 The first version already is implemented and functional, as can be seen in the Figure below:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Marco201604163/ModularArticulation/main/Images/PrintedBox.jpg" width="360">
+  <img src="https://raw.githubusercontent.com/Marco201604163/ModularArticulation/main/Images/PrintedBox.jpeg" width="360">
 </p>
 
 The repository as the follow organization:
