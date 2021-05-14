@@ -28,7 +28,8 @@ The first version already is implemented and functional, as can be seen in the F
 </p>
 
 The repository as the follow organization:
-- Master-RS485-PC: This folder has the Library needed to send commands to the microcontroller from any machine that runs Python. Aditionally also as an Example that explains how to send them.
-- Slave-RS485: This folder has the Library needed to carry communication and to execute the control routines on the microcontroller. Aditionally, it as an Example.
+- Images: This folder only has project images.
+- Master-RS485-PC: This folder has the Library needed to send commands to the microcontroller from any machine that runs Python. Aditionally also has an Example that explains how to send them.
+- Slave-RS485: This folder has the Library needed to carry communication and to execute the control routines on the microcontroller. Aditionally, it has an Example.
 
 Note: This library is developed in order to use a USB to RS485 Converter on the Master Side, and a MAX485CSA module on the Slave Side. It might work with other hardware, however it is not tested.
