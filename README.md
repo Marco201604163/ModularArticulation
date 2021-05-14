@@ -27,7 +27,7 @@ The first version already is implemented and functional, as can be seen in the F
   <img src="https://raw.githubusercontent.com/Marco201604163/ModularArticulation/main/Images/PrintedBox.jpeg" width="360">
 </p>
 
-The repository as the follow organization:
+The repository as the following organization:
 - Images: This folder only has project images.
 - Master-RS485-PC: This folder has the Library needed to send commands to the microcontroller from any machine that runs Python. Aditionally also has an Example that explains how to send them.
 - Slave-RS485: This folder has the Library needed to carry communication and to execute the control routines on the microcontroller. Aditionally, it has an Example.
