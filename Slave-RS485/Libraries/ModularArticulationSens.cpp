@@ -121,6 +121,9 @@ void updateJointSpeedPos(float *currentPos, float *currentSpeed){
 		previousMicros = currentMicros;
 		oldPos = actualPos;
 		oldAngSpeed = angSpeed;
+		
+		// INTERVAL: -PI TO PI
+		if(actualPos > 180) actualPos = mapf(actualPos, 180, 360, -180, 0);	
     }
 	
 	// FUNCTION TO BE CALLED IN THE MAIN LOOP
