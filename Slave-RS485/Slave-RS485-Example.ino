@@ -4,12 +4,13 @@ Created on Tue Mar  9 15:53:10 2021
 @author: MarcoRocha
 */
 
+#include "ModularArticulationSens.h"
 #include "ModularArticulationComs.h"
 #include "ModularArticulationCtrl.h"
-// #include "ModularArticulationSens.h"
+#include "ModularArticulationMotor.h"
 
 const int myAddress = 1;
-int state = 0;  // State Machine Status
+int state = 1;  // State Machine Status
 
 // COMS FEEDBACK
 const int commandStopControl = 0;
@@ -20,25 +21,54 @@ const int commandSetPID = 4;
 const int commandGetPID = 5;
 const int commandGetSpeedPos = 6;
 
+// CYCLE VARS
+uint32_t initTime = 0;
+uint32_t currentTime = 0;
+uint32_t controlTime = 0;
+uint32_t controlInterval = 25UL * 1000UL; // 25 ms
+
+float currentPos = 0.0, currentSpeed = 0.0;
+
+float duty = 0.0;
+
 // Variables to Test Comunications
-float refSpeed = 0;
-float refPos = 0;
+float refSpeed = 110.0;
+float refPos = 60.0;
 float kp = 1.23, ki = 3.45, kd = 5.67;
 float actSpeed = 89.1, actPos = 183.2;
 
 void setup()
 {
   Serial.begin(9600);
+
+  // STARTUP COMMANDS
   startArticulationComs(28800);
+  delay(1);
+  startArticulationSens();
+  startupMotor();
+
+  setMotorSpeed(duty);
   
-  Serial.println("START!");
+  initTime = micros();
+  controlTime = initTime;
+  
+  delay(2000);
 }
 
 void loop()
 {
+  // UPDATE CYCLE VARS
+  updateJointSpeedPos(&currentPos, &currentSpeed);
+  currentTime = micros();
+
+  // LISTEN AND PREPARE RESPONSE
   byte buf [16];
   byte received = recvMsgFromMaster(buf, sizeof(buf));
 
+  /*Serial.println(" ");
+  Serial.println((micros() - currentTime)/1000);
+  Serial.println(" ");*/
+  
   // PROCESSES COMMANDS FROM MASTER
   if (received)
     {
@@ -70,18 +100,21 @@ void loop()
         state = stateMachineUpdate(state, commandSetSpeedPos); // Updates machine state
         refSpeed = getRefSpeedFromMessage(buf);
         refPos = getRefPosFromMessage(buf);
+        zeroControlVars();
       }
   
       else if ((buf [1] == 'S') and buf[6] == '-'){
         msg[2] = commandSetSpeed; // Confirm command reception
         state = stateMachineUpdate(state, commandSetSpeed); // Updates machine state
         refSpeed = getRefSpeedFromMessage(buf);
+        zeroControlVars();
       }
       
       else if ((buf [1] == '-') and buf[6] == 'P'){
         msg[2] = commandSetPos; // Confirm command reception
         state = stateMachineUpdate(state, commandSetPos); // Updates machine state
         refPos = getRefPosFromMessage(buf);
+        zeroControlVars();
       }
   
       else if (buf[1] == 'C'){
@@ -144,30 +177,51 @@ void loop()
       Serial.println(state);
     }
     else if(state == 1){
-      // SPEED AND POS MODE - RUN PID CONTROLLER
-      Serial.println("REF SPEED:");
-      Serial.println(refSpeed);
-      Serial.println("REF POS:");
-      Serial.println(refPos);
-      
+      // CASCADE MODE - RUN CASCADE CONTROLLER
+      if(currentTime - controlTime >= controlInterval){
+        duty = runCascadeControl(rad(hermitePosReference(refPos, currentPos)), rad(currentPos), rad(currentSpeed));
+        setMotorSpeed(duty);
+        controlTime = currentTime; 
+      }
+      Serial.print(hermitePosReference(refPos, currentPos));
+      Serial.print(" \t ");
+      Serial.println(currentPos);
     }
     else if(state == 2){
-      // POS MODE - RUN PD CONTROLLER
-      Serial.println("REF POS:");
-      Serial.println(refPos);
+      // SPEED MODE - RUN PI CONTROLLER
+      if(currentTime - controlTime >= controlInterval){
+        duty = runSpeedControl(rad(hermitePosReference(refSpeed, currentSpeed)), rad(currentSpeed));
+        setMotorSpeed(duty);
+        controlTime = currentTime; 
+      }
+      Serial.print(hermiteSpeedReference(refSpeed, currentSpeed));
+      Serial.print(" \t ");
+      Serial.println(currentSpeed);
       
     }
     else if(state == 3){
-      // SPEED MODE - RUN PI CONTROLLER
-      Serial.println("REF SPEED:");
-      Serial.println(refSpeed);
+      // POS MODE - RUN PD CONTROLLER
+      if(currentTime - controlTime >= controlInterval){
+        duty = runPosControl(rad(hermitePosReference(refPos, currentPos)), rad(currentPos));
+        setMotorSpeed(duty);
+        controlTime = currentTime; 
+      }
+      Serial.print(hermitePosReference(refPos, currentPos));
+      Serial.print(" \t ");
+      Serial.println(currentPos);
     }
 
-    Serial.println(" ");  
-    if (state > 0)
-      analogWrite (11, 255);  // SET LEVEL FOR TEST LED
-    else{
-      analogWrite (11, 0);
-     }
+  if ((currentTime - initTime >= 5000000) and (currentTime - initTime <= 7500000)){
+    refPos = -150;
+    refSpeed = 140;
+  }
+  if ((currentTime - initTime >= 8000000) and (currentTime - initTime <= 8500000)){
+    refPos = -60;
+    refSpeed = 100;
+  }
+  if ((currentTime - initTime >= 11000000) and (currentTime - initTime <= 11500000)){
+    refPos = 170;
+    refSpeed = 200;
+  }
 
 }  // end of loop
