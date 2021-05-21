@@ -11,8 +11,6 @@ Created on Sat Mar  13 11:23:10 2021
 void startArticulationSens();
 
 // RETURNS SENSORS VALUES
-void updateJointSpeedPos(float *currentPos, float *currentSpeed);
-float updateJointPos();					// (Degrees)
 float getSupplyVoltage();				// (V)
 float getMotorVoltage(int dutyPWM);		// (V)
 float getMotorCurrent();				// (A)
