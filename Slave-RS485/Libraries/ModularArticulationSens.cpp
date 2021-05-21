@@ -10,9 +10,6 @@ Created on Sat Mar  13 11:23:10 2021
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-// ENCODER
-#include <AS5600.h>
-
 #include "ModularArticulationSens.h"
 
 // ANALOG INPUTS
@@ -31,15 +28,6 @@ Created on Sat Mar  13 11:23:10 2021
 // TEMPERATURE - INITIALIZATION
 OneWire oneWire(motorTempSensor);	// One Wire Comunication
 DallasTemperature tempSensor(&oneWire);
-
-// ENCODER - INITIALIZATION
-AS5600 magnetic_encoder;
-uint32_t interval = 25UL * 1000UL; // 25 ms
-uint32_t currentMicros = 0, previousMicros = 0;
-double actualPos = 0, oldPos = 0;
-double angSpeed = 0, oldAngSpeed = 0;
-float speedArray[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
-
 
 void startArticulationSens(){
 	tempSensor.begin();				// Starts One-Wire Comunication
@@ -62,73 +50,6 @@ void startArticulationSens(){
 
 	// SPEEDS UP I2C COMS
 	TWBR = 1; 
-
-	// VARIABLES INIT - SPEED / ENCODER
-	previousMicros = micros();
-	actualPos = updateJointPos();
-	oldPos = actualPos;
-}
-
-float updateJointPos(){
-	// GET POSITION FROM MAGNETIC ENCODER
-    delayMicroseconds(100);
-	double magnetic_encoder_raw = magnetic_encoder.getPosition();
-	magnetic_encoder_raw = mapf(magnetic_encoder_raw, 0, 4096, 14.35, 4059.291);
-	
-	// DUE TO CALIBRATION:
-	actualPos = magnetic_encoder_raw * 0.089 - 1.2769;
-	
-	return actualPos;
-}
-
-void updateJointSpeedPos(float *currentPos, float *currentSpeed){
-	currentMicros = micros();
-	uint32_t elapsed = currentMicros - previousMicros;
-	
-	if(elapsed >= interval){
-		// DEGREES PER SECOND
-		// MEDIR POSICAO 
-		
-		// GET POSITION FROM MAGNETIC ENCODER
-		double magnetic_encoder_raw = magnetic_encoder.getPosition();
-		magnetic_encoder_raw = mapf(magnetic_encoder_raw, 0.0, 4096.0, 14.35, 4059.291);
-		
-		// DUE TO CALIBRATION: (360 CORRECTS ORIENTATION)
-		actualPos = 360.0 - magnetic_encoder_raw * 0.089 - 1.2769;
-		
-		// VEL
-		angSpeed = ((diffAngle(oldPos, actualPos) / elapsed) * 1000000UL);
-		
-		// ERROR VERIFICATION
-		if(abs(angSpeed) > 500){
-		  angSpeed = oldAngSpeed;
-		  actualPos = oldPos + angSpeed * elapsed / 1000000UL;
-		}
-		
-		// RUNNING AVERAGE		
-		for(int i = 0; i < 4; i++){
-		  speedArray[i] = speedArray[i+1];
-		}
-		speedArray[4] = angSpeed;
-
-		angSpeed = 0.0;
-		for(int i = 0; i < 5; i++){
-		  angSpeed = angSpeed + speedArray[i];
-		}
-		angSpeed = angSpeed / 5;
-		
-		// VAR UPDATE
-		previousMicros = currentMicros;
-		oldPos = actualPos;
-		oldAngSpeed = angSpeed;
-		
-		// INTERVAL: -PI TO PI
-		if(actualPos > 180) actualPos = mapf(actualPos, 180, 360, -180, 0);	
-    }
-	
-	// FUNCTION TO BE CALLED IN THE MAIN LOOP
-	*currentPos = actualPos;
-	*currentSpeed = angSpeed;	
 }
 
 float getSupplyVoltage(){
