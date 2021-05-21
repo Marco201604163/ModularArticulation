@@ -54,8 +54,8 @@ int stateMachineUpdate(const int actualState, const int commandReceived){
       switch(commandReceived){
         case commandStopCtrl: nextState = actualState; break;
         case commandSpeedPos: nextState = 1; break;
-        case commandSpeed: nextState = 3; break;
-        case commandPos: nextState = 2; break;
+        case commandSpeed: nextState = 2; break;
+        case commandPos: nextState = 3; break;
       } break;
     }
     // STATE 1
@@ -63,8 +63,8 @@ int stateMachineUpdate(const int actualState, const int commandReceived){
       switch(commandReceived){
         case commandStopCtrl: nextState = 0; break;
         case commandSpeedPos: nextState = actualState; break;
-        case commandSpeed: nextState = 3; break;
-        case commandPos: nextState = 2; break;
+        case commandSpeed: nextState = 2; break;
+        case commandPos: nextState = 3; break;
       } break;
     }
     // STATE 2
@@ -72,8 +72,8 @@ int stateMachineUpdate(const int actualState, const int commandReceived){
       switch(commandReceived){
         case commandStopCtrl: nextState = 0; break;
         case commandSpeedPos: nextState = 1; break;
-        case commandSpeed: nextState = 3; break;
-        case commandPos: nextState = actualState; break;
+        case commandSpeed: nextState = actualState; break;
+        case commandPos: nextState = 3; break;
       } break;
     }
     // STATE 3
@@ -81,8 +81,8 @@ int stateMachineUpdate(const int actualState, const int commandReceived){
       switch(commandReceived){
         case commandStopCtrl: nextState = 0; break;
         case commandSpeedPos: nextState = 1; break;
-        case commandSpeed: nextState = actualState; break;
-        case commandPos: nextState = 2; break;
+        case commandSpeed: nextState = 2; break;
+        case commandPos: nextState = actualState; break;
       } break;
     }
   }
@@ -102,6 +102,7 @@ int runCascadeControl(float refPos, float actualPos, float actualSpeed){
   const float Td = 0.0401;
 
   const float minPosError = 0.01745; // 1 Deg in Rads
+  // const float minPosError = 0.00875; // 0.5 Deg in Rads
   const float minSpeed = 0.687; // 39.37 deg/s in Rad
   const float offsetDZ = 15.0;  // 15 Duty Cycle
 
@@ -289,7 +290,7 @@ void zeroControlVars(){
   posError = 0.0;
   oldPosError = 0.0;
   intPosError = 0.0;
-	
+  
   positionRef = 0;
   oldPositionRef = positionRef;
   pInit = positionRef, pFinal = positionRef;
