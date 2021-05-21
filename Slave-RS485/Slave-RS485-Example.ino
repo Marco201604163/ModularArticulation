@@ -3,14 +3,25 @@ Created on Tue Mar  9 15:53:10 2021
 
 @author: MarcoRocha
 */
+// ARTICULATION PARAMS
+const int myAddress = 1;
+int state = 0;  // State Machine Status
 
+// ENCODER
+#include <AS5600.h>
+
+AS5600 magnetic_encoder;
+
+uint32_t currentMicros = 0, previousMicros = 0;
+double actualPos = 0, oldPos = 0;
+double angSpeed = 0, oldAngSpeed = 0;
+float speedArray[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+
+// ARTICULATION LIBRARY
 #include "ModularArticulationSens.h"
 #include "ModularArticulationComs.h"
 #include "ModularArticulationCtrl.h"
 #include "ModularArticulationMotor.h"
-
-const int myAddress = 1;
-int state = 1;  // State Machine Status
 
 // COMS FEEDBACK
 const int commandStopControl = 0;
@@ -23,13 +34,12 @@ const int commandGetSpeedPos = 6;
 
 // CYCLE VARS
 uint32_t initTime = 0;
-uint32_t currentTime = 0;
 uint32_t controlTime = 0;
 uint32_t controlInterval = 25UL * 1000UL; // 25 ms
 
 float currentPos = 0.0, currentSpeed = 0.0;
-
 float duty = 0.0;
+int token = 0; // SIGNALS WHEN CONTROLLER ACTUATES
 
 // Variables to Test Comunications
 float refSpeed = 110.0;
@@ -37,37 +47,83 @@ float refPos = 60.0;
 float kp = 1.23, ki = 3.45, kd = 5.67;
 float actSpeed = 89.1, actPos = 183.2;
 
+
+void updateJointSpeedPos(float *currentPos, float *currentSpeed, uint32_t elapsed){  
+  // GET POSITION FROM MAGNETIC ENCODER
+  double magnetic_encoder_raw = magnetic_encoder.getPosition();
+  magnetic_encoder_raw = mapf(magnetic_encoder_raw, 0.0, 4096.0, 14.35, 4059.291);
+  
+  // DUE TO CALIBRATION: (360 CORRECTS ORIENTATION)
+  actualPos = 360.0 - magnetic_encoder_raw * 0.089 - 1.2769;
+  
+  // VEL
+  angSpeed = ((diffAngle(oldPos, actualPos) / elapsed) * 1000000UL);
+  
+  // ERROR VERIFICATION AND CORRECTION
+  if(abs(angSpeed) > 500){
+    angSpeed = oldAngSpeed;
+    actualPos = oldPos + angSpeed * elapsed / 1000000UL;
+  }
+  
+  // RUNNING AVERAGE    
+  for(int i = 0; i < 4; i++){
+    speedArray[i] = speedArray[i+1];
+  }
+  speedArray[4] = angSpeed;
+
+  angSpeed = 0.0;
+  for(int i = 0; i < 5; i++){
+    angSpeed = angSpeed + speedArray[i];
+  }
+  angSpeed = angSpeed / 5;
+  
+  // VAR UPDATE
+  oldPos = actualPos;
+  oldAngSpeed = angSpeed;
+  
+  // INTERVAL: -PI TO PI
+  if(actualPos > 180) actualPos = mapf(actualPos, 180, 360, -180, 0); 
+  
+  // VARS TO BE CALLED IN THE MAIN LOOP
+  *currentPos = actualPos;
+  *currentSpeed = angSpeed; 
+}
+
 void setup()
 {
   Serial.begin(9600);
 
   // STARTUP COMMANDS
   startArticulationComs(28800);
-  delay(1);
   startArticulationSens();
   startupMotor();
-
   setMotorSpeed(duty);
-  
+
+  // RESET TIME VARS
   initTime = micros();
   controlTime = initTime;
+
+  // RESET ENCODER SPEED VARS
+  previousMicros = micros();
+  updateJointSpeedPos(&currentPos, &currentSpeed, 1);
+  currentSpeed = 0;
+  oldPos = actualPos;
   
   delay(2000);
 }
 
 void loop()
 {
-  // UPDATE CYCLE VARS
-  updateJointSpeedPos(&currentPos, &currentSpeed);
-  currentTime = micros();
-
   // LISTEN AND PREPARE RESPONSE
   byte buf [16];
-  byte received = recvMsgFromMaster(buf, sizeof(buf));
+  byte received = 0;
 
-  /*Serial.println(" ");
-  Serial.println((micros() - currentTime)/1000);
-  Serial.println(" ");*/
+  // ONLY LISTENS AFTER CONTROLLER ACTUATES
+  if(token){
+    received = recvMsgFromMaster(buf, sizeof(buf));
+    token = 0;
+  }
+  // byte received = recvMsgFromMaster(buf, sizeof(buf));
   
   // PROCESSES COMMANDS FROM MASTER
   if (received)
@@ -93,6 +149,7 @@ void loop()
       if ((buf [1] == '-') and buf[6] == '-'){
         msg[2] = commandStopControl; // Confirm command reception
         state = stateMachineUpdate(state, commandStopControl); // Updates machine state
+        zeroControlVars();
       }
 
       else if ((buf [1] == 'S') and buf[6] == 'P'){
@@ -167,61 +224,58 @@ void loop()
       // ZEROING BUF - NO MISINTERPRETATIONS
       for(int i = 0; i < sizeof(buf); i++) buf[i] = 0;
     }
-   }  // END OF if(received)
+  }  // END OF if(received)
 
-    // STATE MACHINE OUTPUT ACTION
+  // UPDATE POS, SPEED AND STATE MACHINE ACTION
+  currentMicros = micros();
+  uint32_t elapsed = currentMicros - previousMicros;
+  
+  if(elapsed >= controlInterval){
+    updateJointSpeedPos(&currentPos, &currentSpeed, elapsed);
+
     if(state == 0){
       // STOPPED
-      Serial.println("STOPPED:");
-      Serial.println("STATE:");
-      Serial.println(state);
-    }
-    else if(state == 1){
-      // CASCADE MODE - RUN CASCADE CONTROLLER
-      if(currentTime - controlTime >= controlInterval){
-        duty = runCascadeControl(rad(hermitePosReference(refPos, currentPos)), rad(currentPos), rad(currentSpeed));
-        setMotorSpeed(duty);
-        controlTime = currentTime; 
-      }
-      Serial.print(hermitePosReference(refPos, currentPos));
+      duty = 0;
+    }else if(state == 1){
+      // CASCADE CONTROLLER
+      duty = runCascadeControl(rad(hermitePosReference(refPos, currentPos)), rad(currentPos), rad(currentSpeed));       
+      Serial.print(refPos);
       Serial.print(" \t ");
       Serial.println(currentPos);
-    }
-    else if(state == 2){
-      // SPEED MODE - RUN PI CONTROLLER
-      if(currentTime - controlTime >= controlInterval){
-        duty = runSpeedControl(rad(hermitePosReference(refSpeed, currentSpeed)), rad(currentSpeed));
-        setMotorSpeed(duty);
-        controlTime = currentTime; 
-      }
-      Serial.print(hermiteSpeedReference(refSpeed, currentSpeed));
+    }else if(state == 2){
+      // PI SPEED CONTROLLER
+      duty = runSpeedControl(rad(hermiteSpeedReference(refSpeed, currentSpeed)), rad(currentSpeed));
+      Serial.print(refSpeed);
       Serial.print(" \t ");
       Serial.println(currentSpeed);
-      
-    }
-    else if(state == 3){
-      // POS MODE - RUN PD CONTROLLER
-      if(currentTime - controlTime >= controlInterval){
-        duty = runPosControl(rad(hermitePosReference(refPos, currentPos)), rad(currentPos));
-        setMotorSpeed(duty);
-        controlTime = currentTime; 
-      }
-      Serial.print(hermitePosReference(refPos, currentPos));
+    }else if(state == 3){
+      // PD POSITION CONTROLLER
+      duty = runPosControl(rad(hermitePosReference(refPos, currentPos)), rad(currentPos));      
+      Serial.print(refPos);
       Serial.print(" \t ");
       Serial.println(currentPos);
+    }else{
+      duty = 0;
+      state = 0;
     }
-
-  if ((currentTime - initTime >= 5000000) and (currentTime - initTime <= 7500000)){
+    
+    setMotorSpeed(duty);
+    previousMicros = currentMicros;
+    token = 1;
+  }
+  /*
+  if ((currentMicros - initTime >= 5000000) and (currentMicros - initTime <= 7500000)){
     refPos = -150;
     refSpeed = 140;
   }
-  if ((currentTime - initTime >= 8000000) and (currentTime - initTime <= 8500000)){
+  if ((currentMicros - initTime >= 8000000) and (currentMicros - initTime <= 8500000)){
     refPos = -60;
     refSpeed = 100;
   }
-  if ((currentTime - initTime >= 11000000) and (currentTime - initTime <= 11500000)){
+  if ((currentMicros - initTime >= 11000000) and (currentMicros - initTime <= 11500000)){
     refPos = 170;
     refSpeed = 200;
   }
+  */
 
 }  // end of loop
