@@ -18,6 +18,9 @@ float getMotorCurrentINA169();			// (A)
 float getMotorTemp();					// (Celsius)
 int homePositionStatus();				// TRUE OR FALSE (1 OR 0)
 
+// CALIBRATION ROUTINE
+void calibrateHomePos(float currentPos, int *flag, float *calibOffset, int *duty);
+
 // AUXILIARY OPERATIONS
 float diffAngle(float oldAngle, float newAngle);
 double mapf(double val, double inMin, double inMax, double outMin, double outMax);
