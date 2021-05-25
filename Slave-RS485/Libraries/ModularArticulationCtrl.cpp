@@ -16,9 +16,10 @@ const int commandStopCtrl = 0;
 const int commandSpeedPos = 1;
 const int commandSpeed = 2;
 const int commandPos = 3;
-const int commandPID = 4;
-const int commandGetPID = 5;
-const int commandGetSpeedPos = 6;
+const int commandCalibHome = 4;
+const int commandPID = 5;
+const int commandGetPID = 6;
+const int commandGetSpeedPos = 7;
 
 const float Ts = 0.025; // Sampling Time
 
@@ -56,6 +57,7 @@ int stateMachineUpdate(const int actualState, const int commandReceived){
         case commandSpeedPos: nextState = 1; break;
         case commandSpeed: nextState = 2; break;
         case commandPos: nextState = 3; break;
+        case commandCalibHome: nextState = 4; break;
       } break;
     }
     // STATE 1
@@ -65,6 +67,7 @@ int stateMachineUpdate(const int actualState, const int commandReceived){
         case commandSpeedPos: nextState = actualState; break;
         case commandSpeed: nextState = 2; break;
         case commandPos: nextState = 3; break;
+        case commandCalibHome: nextState = 4; break;
       } break;
     }
     // STATE 2
@@ -74,6 +77,7 @@ int stateMachineUpdate(const int actualState, const int commandReceived){
         case commandSpeedPos: nextState = 1; break;
         case commandSpeed: nextState = actualState; break;
         case commandPos: nextState = 3; break;
+        case commandCalibHome: nextState = 4; break;
       } break;
     }
     // STATE 3
@@ -83,6 +87,17 @@ int stateMachineUpdate(const int actualState, const int commandReceived){
         case commandSpeedPos: nextState = 1; break;
         case commandSpeed: nextState = 2; break;
         case commandPos: nextState = actualState; break;
+        case commandCalibHome: nextState = 4; break;
+      } break;
+    }
+	// STATE 4
+    case 4 :{
+      switch(commandReceived){
+        case commandStopCtrl: nextState = 0; break;
+        case commandSpeedPos: nextState = 1; break;
+        case commandSpeed: nextState = 2; break;
+        case commandPos: nextState = 3; break;
+        case commandCalibHome: nextState = actualState; break;
       } break;
     }
   }
@@ -301,3 +316,4 @@ void zeroControlVars(){
 	
   startHermTime = 0, hermTime = millis();
 }
+
