@@ -30,16 +30,18 @@ def close():
 #   1 - SetSpeedPos
 #   2 - SetSpeed
 #   3 - SetPos
-#   4 - SetPIDParameters
-#   5 - GetPIDParameters
-#   6 - GetSpeedPos
+#   4 - CalibrateHomePositionSensor
+#   5 - SetPIDParameters
+#   6 - GetPIDParameters
+#   7 - GetSpeedPos
 commandStopControl = 0
 commandSetSpeedPos = 1
 commandSetSpeed = 2
 commandSetPos = 3
-commandSetPID = 4
-commandGetPID = 5
-commandGetSpeedPos = 6
+commandCalibHomeSensor = 4
+commandSetPID = 5
+commandGetPID = 6
+commandGetSpeedPos = 7
 
 def setSpeedPos(address, speed, pos):
     message = constructControlMessage(address, speed, pos)
@@ -101,6 +103,21 @@ def stopControl(address):
         print("No Response from Slave")
     else:
         if((response[1] == address) and (response[2] == commandStopControl)):
+            print("Command correctly sent to Slave")
+        else:
+            print("Command sent but not confirmed from Slave")
+       
+
+def calibHomePosSensor(address):
+    message = constructCalibMessage(address)
+    global rs485
+    rs485.sendMsg(message)
+    time.sleep(0.1)
+    response = listenBack()
+    if(response == False):
+        print("No Response from Slave")
+    else:
+        if((response[1] == address) and (response[2] == commandCalibHomeSensor)):
             print("Command correctly sent to Slave")
         else:
             print("Command sent but not confirmed from Slave")
@@ -226,6 +243,14 @@ def constructControlMessage(address, refSpeed, refPos):
 def constructDiagMessage(address):
     # D - Diagnose / Data Retrieval
     rawArray = [address, ord('D')]
+    package = bytearray(rawArray)
+    
+    return package
+
+
+def constructCalibMessage(address):
+    # D - Diagnose / Data Retrieval
+    rawArray = [address, ord('H')]
     package = bytearray(rawArray)
     
     return package
