@@ -18,4 +18,3 @@ int runSpeedControl(float refSpeed, float actualSpeed);
 // GENERATE HERMITE POLYNOMIALS AS REFERENCES
 float hermitePosReference(float refPos, float currentPos);
 float hermiteSpeedReference(float refSpeed, float currentSpeed);
-
