@@ -17,17 +17,19 @@ import actuatorComs as act
 act.init()
 
 address = 1
-refSpeed = 313.1
-refPos = 424.2
+refSpeed = 100.0
+refPos = 150.0
 
-act.setSpeedPos(address, refSpeed, refPos)
-# act.setSpeed(address, 43.25)
-# act.setPos(address, 67.89)
+# act.setSpeedPos(address, refSpeed, refPos)
+# act.setSpeed(address, 110)
+act.setPos(address, -10.0)
 
 # act.getSpeedPos(address)
 
 # act.setPIDparameters(address, 17.0, 22.3, 43.1)
 # act.getPIDparameters(address)
+
+# act.calibHomePosSensor(address)
 
 # act.stopControl(address)
 
