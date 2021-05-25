@@ -29,6 +29,9 @@ Created on Sat Mar  13 11:23:10 2021
 OneWire oneWire(motorTempSensor);	// One Wire Comunication
 DallasTemperature tempSensor(&oneWire);
 
+// HOME POSITION SENSOR VARS
+int hallStatus = 0, oldHallStatus = 0;
+
 void startArticulationSens(){
 	tempSensor.begin();				// Starts One-Wire Comunication
 	tempSensor.setResolution(9);	// Less Resolution = Faster Conversion
@@ -50,6 +53,10 @@ void startArticulationSens(){
 
 	// SPEEDS UP I2C COMS
 	TWBR = 1; 
+	
+	// RESETS HALL STATUS VARS
+	hallStatus = homePositionStatus();
+	oldHallStatus = hallStatus;
 }
 
 float getSupplyVoltage(){
@@ -123,6 +130,30 @@ int homePositionStatus(){
 	// RETURNS 1 IF THE HOME POSITION IT'S REACHED
 	// Digital pin with 10k Ohm pull-up resistor
 	return(not(digitalRead(homePosSensor)));
+}
+
+// CALIBRATES HOME POSITION - RETURNS 1 SUCESSFULLY
+void calibrateHomePos(float currentPos, int *flag, float *calibOffset, int *duty){
+	hallStatus = homePositionStatus();
+	
+	// RE
+	if((hallStatus == 1) and (oldHallStatus == 0)){
+		*calibOffset = (*calibOffset * (*flag) + currentPos) / (*flag + 1);
+		*flag += 1;
+	}
+	
+	// FE
+	if((hallStatus == 0) and (oldHallStatus == 1)){
+		*calibOffset = (*calibOffset * (*flag) + currentPos) / (*flag + 1);
+		*flag += 1;
+	}	
+	
+	// UPDATES VARS
+	oldHallStatus = hallStatus;
+	
+	// HANDLES DUTY
+	if(*flag < 2) *duty =75;
+	else *duty = -75;
 }
 
 float diffAngle(float oldAngle, float newAngle){
