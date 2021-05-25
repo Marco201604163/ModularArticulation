@@ -16,6 +16,7 @@ uint32_t currentMicros = 0, previousMicros = 0;
 double actualPos = 0, oldPos = 0;
 double angSpeed = 0, oldAngSpeed = 0;
 float speedArray[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+float calibOffset = 0.0;
 
 // ARTICULATION LIBRARY
 #include "ModularArticulationSens.h"
@@ -28,9 +29,10 @@ const int commandStopControl = 0;
 const int commandSetSpeedPos = 1;
 const int commandSetSpeed = 2;
 const int commandSetPos = 3;
-const int commandSetPID = 4;
-const int commandGetPID = 5;
-const int commandGetSpeedPos = 6;
+const int commandCalibHome = 4;
+const int commandSetPID = 5;
+const int commandGetPID = 6;
+const int commandGetSpeedPos = 7;
 
 // CYCLE VARS
 uint32_t initTime = 0;
@@ -38,7 +40,7 @@ uint32_t controlTime = 0;
 uint32_t controlInterval = 25UL * 1000UL; // 25 ms
 
 float currentPos = 0.0, currentSpeed = 0.0;
-float duty = 0.0;
+int duty = 0;
 int token = 0; // SIGNALS WHEN CONTROLLER ACTUATES
 
 // Variables to Test Comunications
@@ -89,6 +91,18 @@ void updateJointSpeedPos(float *currentPos, float *currentSpeed, uint32_t elapse
   *currentSpeed = angSpeed; 
 }
 
+float updateJointPos(){
+  // GET POSITION FROM MAGNETIC ENCODER
+    delayMicroseconds(100);
+  double magnetic_encoder_raw = magnetic_encoder.getPosition();
+  magnetic_encoder_raw = mapf(magnetic_encoder_raw, 0, 4096, 14.35, 4059.291);
+  
+  // DUE TO CALIBRATION: (360 CORRECTS ORIENTATION)
+  actualPos = 360.0 - magnetic_encoder_raw * 0.089 - 1.2769;
+  
+  return actualPos;
+}
+
 void setup()
 {
   Serial.begin(9600);
@@ -105,7 +119,7 @@ void setup()
 
   // RESET ENCODER SPEED VARS
   previousMicros = micros();
-  updateJointSpeedPos(&currentPos, &currentSpeed, 1);
+  currentPos = updateJointPos();
   currentSpeed = 0;
   oldPos = actualPos;
   
@@ -171,6 +185,12 @@ void loop()
         msg[2] = commandSetPos; // Confirm command reception
         state = stateMachineUpdate(state, commandSetPos); // Updates machine state
         refPos = getRefPosFromMessage(buf);
+        zeroControlVars();
+      }
+      
+      else if (buf [1] == 'H'){
+        msg[2] = commandCalibHome; // Confirm command reception
+        state = stateMachineUpdate(state, commandCalibHome); // Updates machine state;
         zeroControlVars();
       }
   
@@ -254,6 +274,18 @@ void loop()
       Serial.print(refPos);
       Serial.print(" \t ");
       Serial.println(currentPos);
+    }else if(state == 4){
+      // CALIBRATE HOME POS
+      int calibFlag = 0;
+      calibOffset = 0;
+      while(calibFlag < 4){ // DUE TO 4 SAMPLES
+        currentPos = updateJointPos();
+        calibrateHomePos(currentPos, &calibFlag, &calibOffset, &duty);
+        setMotorSpeed(duty);
+      }
+      Serial.println(calibOffset);
+      duty = 0;
+      state = 0;
     }else{
       duty = 0;
       state = 0;
@@ -263,6 +295,7 @@ void loop()
     previousMicros = currentMicros;
     token = 1;
   }
+
   /*
   if ((currentMicros - initTime >= 5000000) and (currentMicros - initTime <= 7500000)){
     refPos = -150;
