@@ -17,9 +17,8 @@ const int commandSpeedPos = 1;
 const int commandSpeed = 2;
 const int commandPos = 3;
 const int commandCalibHome = 4;
-const int commandPID = 5;
-const int commandGetPID = 6;
-const int commandGetSpeedPos = 7;
+const int commandGetSpeedPos = 5;
+const int commandGetMotorTemp = 6;
 
 const float Ts = 0.025; // Sampling Time
 
