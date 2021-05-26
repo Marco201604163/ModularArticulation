@@ -18,16 +18,14 @@ act.init()
 
 address = 1
 refSpeed = 100.0
-refPos = 150.0
+refPos = 50.0
 
 # act.setSpeedPos(address, refSpeed, refPos)
 # act.setSpeed(address, 110)
-act.setPos(address, -10.0)
+# act.setPos(address, 160)
 
 # act.getSpeedPos(address)
-
-# act.setPIDparameters(address, 17.0, 22.3, 43.1)
-# act.getPIDparameters(address)
+# act.getMotorTemp(address)
 
 # act.calibHomePosSensor(address)
 
