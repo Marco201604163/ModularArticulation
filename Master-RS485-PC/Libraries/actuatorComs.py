@@ -39,9 +39,8 @@ commandSetSpeedPos = 1
 commandSetSpeed = 2
 commandSetPos = 3
 commandCalibHomeSensor = 4
-commandSetPID = 5
-commandGetPID = 6
-commandGetSpeedPos = 7
+commandGetSpeedPos = 5
+commandGetTemp = 6
 
 def setSpeedPos(address, speed, pos):
     message = constructControlMessage(address, speed, pos)
@@ -123,8 +122,8 @@ def calibHomePosSensor(address):
             print("Command sent but not confirmed from Slave")
     
     
-def setPIDparameters(address, kp, ki, kd):
-    message = constructSetPIDMessage(address, kp, ki, kd)
+def getMotorTemp(address):
+    message = constructGetTempMessage(address)
     global rs485
     rs485.sendMsg(message)
     time.sleep(0.1)
@@ -132,38 +131,16 @@ def setPIDparameters(address, kp, ki, kd):
     if(response == False):
         print("No Response from Slave")
     else:
-        if((response[1] == address) and (response[2] == commandSetPID)):
+        if((response[1] == address) and (response[2] == commandGetTemp)):
+            [motorTemp] = struct.unpack("!f", response[3:7])
+            motorTemp = round(motorTemp, 5)
             print("Command correctly sent to Slave")
+            print("Motor Temp: \t", motorTemp)
         else:
             print("Command sent but not confirmed from Slave")
             
-
-def getPIDparameters(address):
-    message = constructGetPIDMessage(address)
-    global rs485
-    rs485.sendMsg(message)
-    time.sleep(0.1)
-    response = listenBack()
-    if(response == False):
-        print("No Response from Slave")
-        return False
-    else:
-        if((response[1] == address) and (response[2] == commandGetPID)):
-            [kp] = struct.unpack("!f", response[3:7])
-            [ki] = struct.unpack("!f", response[7:11])
-            [kd] = struct.unpack("!f", response[11:15])
-            kp = round(kp, 5)
-            ki = round(ki, 5)
-            kd = round(kd, 5)
-            print("Command correctly sent to Slave")
-            print("kp: \t", kp)
-            print("ki: \t", ki)
-            print("kd: \t", kd)
-        else:
-            print("Command sent but not confirmed from Slave")
+        return [motorTemp]
         
-        return [kp, ki, kd]
-
 
 def getSpeedPos(address):
     message = constructDiagMessage(address)
@@ -256,24 +233,7 @@ def constructCalibMessage(address):
     return package
 
 
-def constructSetPIDMessage(address, kp, ki, kd):
-    # C - Controller Parameters
-    kp = 1.0 * float(kp)
-    ki = 1.0 * float(ki)
-    kd = 1.0 * float(kd)
-    
-    kpInBytes = list(struct.pack("!f", kp))
-    kiInBytes = list(struct.pack("!f", ki))
-    kdInBytes = list(struct.pack("!f", kd))
-    
-    
-    rawArray = [address, ord('C'), kpInBytes[0], kpInBytes[1], kpInBytes[2], kpInBytes[3], kiInBytes[0], kiInBytes[1], kiInBytes[2], kiInBytes[3], kdInBytes[0], kdInBytes[1], kdInBytes[2], kdInBytes[3]]
-    package = bytearray(rawArray)
-    
-    return package
-
-
-def constructGetPIDMessage(address):
+def constructGetTempMessage(address):
     # G - Get PID Parameters
     rawArray = [address, ord('G')]
     package = bytearray(rawArray)
