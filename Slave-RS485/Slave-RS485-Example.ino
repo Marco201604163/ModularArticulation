@@ -30,9 +30,8 @@ const int commandSetSpeedPos = 1;
 const int commandSetSpeed = 2;
 const int commandSetPos = 3;
 const int commandCalibHome = 4;
-const int commandSetPID = 5;
-const int commandGetPID = 6;
-const int commandGetSpeedPos = 7;
+const int commandGetSpeedPos = 5;
+const int commandGetMotorTemp = 6;
 
 // CYCLE VARS
 uint32_t initTime = 0;
@@ -43,11 +42,9 @@ float currentPos = 0.0, currentSpeed = 0.0;
 int duty = 0;
 int token = 0; // SIGNALS WHEN CONTROLLER ACTUATES
 
-// Variables to Test Comunications
-float refSpeed = 110.0;
-float refPos = 60.0;
-float kp = 1.23, ki = 3.45, kd = 5.67;
-float actSpeed = 89.1, actPos = 183.2;
+// Variables From Comunications
+float refSpeed = 0.0;
+float refPos = 0.0;
 
 
 void updateJointSpeedPos(float *currentPos, float *currentSpeed, uint32_t elapsed){  
@@ -57,6 +54,19 @@ void updateJointSpeedPos(float *currentPos, float *currentSpeed, uint32_t elapse
   
   // DUE TO CALIBRATION: (360 CORRECTS ORIENTATION)
   actualPos = 360.0 - magnetic_encoder_raw * 0.089 - 1.2769;
+  
+  // DUE TO HOME POSITION CALIB:
+  if(calibOffset != 0){
+    if((actualPos >= calibOffset) and (actualPos <= 360.0)){
+      actualPos = mapf(actualPos, calibOffset, 360.0, 0.0, 360.0 - calibOffset); 
+    }
+    else if((actualPos >= 0) and (actualPos < calibOffset)){
+      actualPos = mapf(actualPos, 0.0, calibOffset, 360.0 - calibOffset, 360.0); 
+    }
+  }
+  
+  // INTERVAL: -PI TO PI
+  if(actualPos > 180) actualPos = mapf(actualPos, 180, 360, -180, 0); 
   
   // VEL
   angSpeed = ((diffAngle(oldPos, actualPos) / elapsed) * 1000000UL);
@@ -82,9 +92,11 @@ void updateJointSpeedPos(float *currentPos, float *currentSpeed, uint32_t elapse
   // VAR UPDATE
   oldPos = actualPos;
   oldAngSpeed = angSpeed;
-  
+
+  /*
   // INTERVAL: -PI TO PI
   if(actualPos > 180) actualPos = mapf(actualPos, 180, 360, -180, 0); 
+  */
   
   // VARS TO BE CALLED IN THE MAIN LOOP
   *currentPos = actualPos;
@@ -120,6 +132,9 @@ void setup()
   // RESET ENCODER SPEED VARS
   previousMicros = micros();
   currentPos = updateJointPos();
+  // INTERVAL: -PI TO PI
+  if(actualPos > 180) actualPos = mapf(actualPos, 180, 360, -180, 0); 
+  currentPos = actualPos;
   currentSpeed = 0;
   oldPos = actualPos;
   
@@ -194,31 +209,18 @@ void loop()
         zeroControlVars();
       }
   
-      else if (buf[1] == 'C'){
-        Serial.println("SET NEW PID PARAMETERS!:");
-        msg[2] = commandSetPID; // Confirm command reception
-        float *constants;
-        constants = getNewPIDParams(buf);
-        kp = *(constants);
-        ki = *(constants + 1);
-        kd = *(constants + 2);
-      }
-  
       else if (buf[1] == 'G'){
-        Serial.println("GET PID PARAMETERS REQUEST!");
-        msg[2] = commandGetPID; // Confirm command reception
+        Serial.println("GET MOTOR TEMP!");
+        msg[2] = commandGetMotorTemp; // Confirm command reception
   
         // CONVERT VALUES TO BYTES
-        byte kpBytes[4], kiBytes[4], kdBytes[4];
-        float2Bytes(kp,&kpBytes[0]);
-        float2Bytes(ki,&kiBytes[0]);
-        float2Bytes(kd,&kdBytes[0]);
+        byte tempBytes[4];
+        float motorTemp = getMotorTemp();
+        float2Bytes(motorTemp,&tempBytes[0]);
   
         // PUT BYTES ON MESSAGE
         for(int j = 3; j < 7; j++){
-          msg[j] = kpBytes[6-j];
-          msg[j+4] = kiBytes[6-j];
-          msg[j+8] = kdBytes[6-j];
+          msg[j] = tempBytes[6-j];
         }
       }
   
@@ -228,8 +230,8 @@ void loop()
   
         // CONVERT VALUES TO BYTES
         byte actSpeedBytes[4], actPosBytes[4];
-        float2Bytes(actSpeed,&actSpeedBytes[0]);
-        float2Bytes(actPos,&actPosBytes[0]);
+        float2Bytes(currentSpeed,&actSpeedBytes[0]);
+        float2Bytes(currentPos,&actPosBytes[0]);
   
         // PUT BYTES ON MESSAGE
         for(int j = 3; j < 7; j++){
@@ -277,7 +279,7 @@ void loop()
     }else if(state == 4){
       // CALIBRATE HOME POS
       int calibFlag = 0;
-      calibOffset = 0;
+      calibOffset = 0.0;
       while(calibFlag < 4){ // DUE TO 4 SAMPLES
         currentPos = updateJointPos();
         calibrateHomePos(currentPos, &calibFlag, &calibOffset, &duty);
