@@ -14,10 +14,10 @@ import serial
 import rs485
 import struct
 
-def init():
+def init(USBport):
     # Opens Port
     global port
-    port = serial.Serial(port="COM3", baudrate=28800)
+    port = serial.Serial(port=USBport, baudrate=28800)
     global rs485
     rs485 = rs485.SerialWrapper(port)
     
@@ -42,7 +42,8 @@ commandCalibHomeSensor = 4
 commandGetSpeedPos = 5
 commandGetTemp = 6
 
-def setSpeedPos(address, speed, pos):
+def setCascade(address, pos):
+    speed = 0
     message = constructControlMessage(address, speed, pos)
     global rs485
     rs485.sendMsg(message)
@@ -55,11 +56,6 @@ def setSpeedPos(address, speed, pos):
             print("Command correctly sent to Slave")
         else:
             print("Command sent but not confirmed from Slave")
-   
-    
-def setPosSpeed(address, pos, speed):
-    # Call the right on
-    setSpeedPos(address, speed, pos)
 
 
 def setSpeed(address, speed):
