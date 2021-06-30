@@ -16,6 +16,9 @@ float getMotorVoltage(int dutyPWM);		// (V)
 float getMotorCurrent();				// (A)
 float getMotorCurrentINA169();			// (A)
 float getMotorTemp();					// (Celsius)
+void setMotorTempAlarm(int maxTemp);
+void stopMotorTempAlarm();
+int getMotorTempAlarmStatus();
 int homePositionStatus();				// TRUE OR FALSE (1 OR 0)
 
 // CALIBRATION ROUTINE
