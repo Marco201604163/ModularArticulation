@@ -28,17 +28,20 @@ Created on Sat Mar  13 11:23:10 2021
 // TEMPERATURE - INITIALIZATION
 OneWire oneWire(motorTempSensor);	// One Wire Comunication
 DallasTemperature tempSensor(&oneWire);
+DeviceAddress tempSensorAddress;
 
 // HOME POSITION SENSOR VARS
 int hallStatus = 0, oldHallStatus = 0;
 
 void startArticulationSens(){
-	tempSensor.begin();				// Starts One-Wire Comunication
-	tempSensor.setResolution(9);	// Less Resolution = Faster Conversion
+	tempSensor.begin();								// Starts One-Wire Comunication
+	tempSensor.getAddress(tempSensorAddress, 0);	// Get Temp Sensor Address
+	tempSensor.setResolution(tempSensorAddress, 9);	// Less Resolution = Faster Conversion
 	// IMPORTANT NOTE: If temperature reaches ridiculous values,
 	//		must verify function above
 	// CONSULT: https://lastminuteengineers.com/ds18b20-arduino-tutorial/
 	tempSensor.setWaitForConversion(false);
+	tempSensor.setHighAlarmTemp(tempSensorAddress, 125); // Set to Max Temp
 	
 	
 	// ANALOG INPUTS - VOLTAGE AND CURRENT
@@ -123,7 +126,22 @@ float getMotorTemp(){
 	// USES DALLAS (MANUFACTURER) LIBRARY
 	tempSensor.requestTemperatures();
 	delay(1);
-	return (tempSensor.getTempCByIndex(0));
+	return (tempSensor.getTempC(tempSensorAddress));
+}
+
+void setMotorTempAlarm(int maxTemp){
+	// SETS MAX ALLOWED TEMPERATURE
+	tempSensor.setHighAlarmTemp(tempSensorAddress, maxTemp);
+}
+
+int getMotorTempAlarmStatus(){
+	// CHECKS TEMPERATURE ALARM FLAG
+	return tempSensor.hasAlarm(tempSensorAddress);
+}
+
+void stopMotorTempAlarm(){
+	// TURNS OFF ALARM
+	tempSensor.setHighAlarmTemp(tempSensorAddress, 125);
 }
 
 int homePositionStatus(){
